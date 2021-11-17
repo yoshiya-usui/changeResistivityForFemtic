@@ -1,18 +1,25 @@
 //--------------------------------------------------------------------------
-// This file is part of changeResistivity.
+// MIT License
 //
-// changeResistivity is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
+// Copyright (c) 2021 Yoshiya Usui
 //
-// changeResistivity is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 //
-// You should have received a copy of the GNU General Public License
-// along with changeResistivity. If not, see <http://www.gnu.org/licenses/>.
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 //--------------------------------------------------------------------------
 #include <iostream>
 #include <fstream>
@@ -58,6 +65,7 @@ MeshDataTetraElement m_meshDataTetraElement;
 
 void run( const std::string& paramFile );
 void readParameterFile( const std::string& paramFile );
+void selectElements( const MeshDataTetraElement& MeshData, std::set<int>& elementsSelected );
 void selectResistivityBlocks();
 bool inRegion( const CommonParameters::locationXYZ& coord );
 
@@ -74,8 +82,9 @@ void run( const std::string& paramFile ){
 	readParameterFile(paramFile);
 	m_meshDataTetraElement.inputMeshData();
 	m_resistivityBlock.inputResisitivityBlock(m_numIteration);
-	m_resistivityBlock.calcGravityCenters(m_meshDataTetraElement);
-	selectResistivityBlocks();
+	std::set<int> elementsSelected ;
+	selectElements(m_meshDataTetraElement, elementsSelected);
+	m_resistivityBlock.changeResistivityOfSelectedElements(elementsSelected, m_modifiedResistivity, m_modifiedMinResistivity, m_modifiedMaxResistivity );
 	m_resistivityBlock.outputResisitivityBlock(m_meshDataTetraElement, m_numIteration);
 	m_resistivityBlock.outputResistivityValuesToBinary(m_meshDataTetraElement, m_numIteration);
 }
@@ -157,24 +166,21 @@ void readParameterFile( const std::string& paramFile ){
 
 }
 
-void selectResistivityBlocks(){
+void selectElements( const MeshDataTetraElement& MeshData, std::set<int>& elementsSelected ){
 
-	const int nBlk = m_resistivityBlock.getNumResistivityBlockTotal();
-	int icount(0);
-	for( int iBlk = 0; iBlk < nBlk; ++iBlk ){
-		const CommonParameters::locationXYZ coord = m_resistivityBlock.getGravityCenter(iBlk);
-		const double resistivity = m_resistivityBlock.getResistivityValuesFromBlockID(iBlk);
-		if( !m_resistivityBlock.isFixedResistivityValue(iBlk) && inRegion(coord) &&
-			resistivity >= m_minResistivityForSelecting && resistivity <= m_maxResistivityForSelecting ){
-			m_resistivityBlock.setResistivityValuesFromBlockID(iBlk, m_modifiedResistivity);
-			m_resistivityBlock.setResistivityValuesMinFromBlockID(iBlk, m_modifiedMinResistivity);
-			m_resistivityBlock.setResistivityValuesMaxFromBlockID(iBlk, m_modifiedMaxResistivity);
-			m_resistivityBlock.fixedResistivityValue(iBlk);
-			++icount;
+	const int numElemTotal = MeshData.getNumElemTotal();
+	for( int iElem = 0; iElem < numElemTotal; ++iElem ){
+		const int iBlk = m_resistivityBlock.getBlockFromElement(iElem);
+		if( !m_resistivityBlock.isFixedResistivityValue(iBlk) ){
+			const CommonParameters::locationXYZ coord = MeshData.getElementCenter(iElem);
+			const double resistivity = m_resistivityBlock.getResistivityValueFromBlockIndex(iBlk);
+			if( inRegion(coord) && resistivity >= m_minResistivityForSelecting && resistivity <= m_maxResistivityForSelecting ){
+				elementsSelected.insert(iElem);
+			}
 		}
 	}
 
-	std::cout << "Number of the selected blocks : " << icount << std::endl;
+	std::cout << "Number of the selected elements : " << elementsSelected.size() << std::endl;
 
 }
 
