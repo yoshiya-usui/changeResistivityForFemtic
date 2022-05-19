@@ -85,10 +85,10 @@ public:
 	const std::set<int> getElementsFromBlock( const int iBlk ) const;
 
 	// Output data of resisitivity block model to file
-	void outputResisitivityBlock( const MeshDataTetraElement& MeshData, const int iterNum ) const;
+	void outputResisitivityBlock( const MeshData* const MeshData, const int iterNum ) const;
 
 	// Output resistivity values to binary file
-	void outputResistivityValuesToBinary( const MeshDataTetraElement& MeshData, const int iterNum ) const;
+	void outputResistivityValuesToBinary( const bool isTetra, const MeshData* const MeshData, const int iterNum ) const;
 
 private:
 	// Copy constructer

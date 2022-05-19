@@ -35,13 +35,6 @@ static const int EY_POLARIZATION = 1;
 static const int TM_MODE = 0;
 static const int TE_MODE = 1;
 
-//// Flag specifing the way of numbering
-//enum numbering{
-//	XYZ=0,
-//	YZX=1,
-//	ZXY=2,
-//};
-//
 struct locationXY{
 	double X;
 	double Y;
@@ -78,6 +71,18 @@ struct DoubleMatrix2x2{
 	double comp12;
 	double comp21;
 	double comp22;
+};
+
+struct DoubleMatrix3x3{
+	double comp11;
+	double comp12;
+	double comp13;
+	double comp21;
+	double comp22;
+	double comp23;
+	double comp31;
+	double comp32;
+	double comp33;
 };
 
 struct Vector3D{

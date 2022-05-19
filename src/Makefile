@@ -9,6 +9,7 @@ DEST          = ./
 OBJS          = main.o \
                 MeshData.o \
                 MeshDataTetraElement.o \
+                MeshDataNonConformingHexaElement.o \
                 ResistivityBlock.o \
                 Util.o
 PROGRAM       = changeResistivity

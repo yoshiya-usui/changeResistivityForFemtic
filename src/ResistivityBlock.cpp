@@ -222,7 +222,7 @@ const std::set<int> ResistivityBlock::getElementsFromBlock( const int iBlk ) con
 }
 
 // Output data of resisitivity block model to file
-void ResistivityBlock::outputResisitivityBlock( const MeshDataTetraElement& MeshData, const int iterNum ) const{
+void ResistivityBlock::outputResisitivityBlock( const MeshData* const MeshData, const int iterNum ) const{
 
 	std::ostringstream fileName;
 	fileName << "resistivity_block_iter" << iterNum << ".mod.dat";
@@ -233,7 +233,7 @@ void ResistivityBlock::outputResisitivityBlock( const MeshDataTetraElement& Mesh
 		exit(1);
 	}
 
-	const int numElems = MeshData.getNumElemTotal();
+	const int numElems = MeshData->getNumElemTotal();
 	const int numBlocks = static_cast<int>(m_resistivityBlockInfo.size());
 	fprintf(fp, "%10d%10d\n",numElems, numBlocks );
 	for( int iElem = 0; iElem < numElems; ++iElem ){
@@ -254,7 +254,7 @@ void ResistivityBlock::outputResisitivityBlock( const MeshDataTetraElement& Mesh
 }
 
 // Output resistivity values to binary file
-void ResistivityBlock::outputResistivityValuesToBinary( const MeshDataTetraElement& MeshData, const int iterNum ) const{
+void ResistivityBlock::outputResistivityValuesToBinary( const bool isTetra, const MeshData* const MeshData, const int iterNum ) const{
 
 	std::ostringstream oss;
 	oss << "ResistivityMod.iter" << iterNum;
@@ -273,11 +273,14 @@ void ResistivityBlock::outputResistivityValuesToBinary( const MeshDataTetraEleme
 	int ibuf(1);
 	fout.write( (char*) &ibuf, sizeof( int ) );
 
-	strcpy( line, "tetra4" );
+	if(isTetra){
+		strcpy( line, "tetra4" );
+	}else{
+		strcpy( line, "hexa8" );
+	}
 	fout.write( line, 80 );
 
-	const int nElem = MeshData.getNumElemTotal();
-
+	const int nElem = MeshData->getNumElemTotal();
 	for( int iElem = 0 ; iElem < nElem; ++iElem ){
 		const int iBlk = getBlockFromElement(iElem);
 		const ResistivityBlockInformation& info = m_resistivityBlockInfo[iBlk];

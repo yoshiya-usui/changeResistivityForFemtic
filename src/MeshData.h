@@ -44,6 +44,7 @@ public:
 	enum MeshType{
 		HEXA = 0,
 		TETRA,
+		DHEXA,
 	};
 
 	struct coordinateValue{

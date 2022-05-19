@@ -35,7 +35,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "MeshData.h"
 #include "MeshDataTetraElement.h"
+#include "MeshDataNonConformingHexaElement.h"
 #include "ResistivityBlock.h"
 
 enum RegionType{
@@ -61,11 +63,10 @@ double m_modifiedMinResistivity = 0.1;
 double m_modifiedMaxResistivity = 1.0e4;
 Length m_length = { 0.0, 0.0, 0.0 };
 ResistivityBlock m_resistivityBlock;
-MeshDataTetraElement m_meshDataTetraElement;
 
 void run( const std::string& paramFile );
 void readParameterFile( const std::string& paramFile );
-void selectElements( const MeshDataTetraElement& MeshData, std::set<int>& elementsSelected );
+void selectElements( const MeshData* const MeshData, std::set<int>& elementsSelected );
 void selectResistivityBlocks();
 bool inRegion( const CommonParameters::locationXYZ& coord );
 
@@ -80,13 +81,31 @@ int main( int argc, char* argv[] ){
 
 void run( const std::string& paramFile ){
 	readParameterFile(paramFile);
-	m_meshDataTetraElement.inputMeshData();
+	std::ifstream inFile( "mesh.dat", std::ios::in );
+	if( inFile.fail() )
+	{
+		std::cerr << "File open error : mesh.dat !!" << std::endl;
+		exit(1);
+	}
+	std::string meshType;
+	inFile >> meshType;
+	std::cout << "Mesh type: " << meshType << std::endl;
+	MeshData* m_ptrMeshData = NULL; 
+	if( meshType.substr(0,5).compare("TETRA") == 0 ){
+		m_ptrMeshData = new MeshDataTetraElement;
+	}else if( meshType.substr(0,5).compare("DHEXA") == 0 ){
+		m_ptrMeshData = new MeshDataNonConformingHexaElement;
+	}else{
+		std::cerr << "Unsupported mesh type: " << meshType << std::endl;
+	}
+	m_ptrMeshData->inputMeshData();
 	m_resistivityBlock.inputResisitivityBlock(m_numIteration);
 	std::set<int> elementsSelected ;
-	selectElements(m_meshDataTetraElement, elementsSelected);
+	selectElements(m_ptrMeshData, elementsSelected);
 	m_resistivityBlock.changeResistivityOfSelectedElements(elementsSelected, m_modifiedResistivity, m_modifiedMinResistivity, m_modifiedMaxResistivity );
-	m_resistivityBlock.outputResisitivityBlock(m_meshDataTetraElement, m_numIteration);
-	m_resistivityBlock.outputResistivityValuesToBinary(m_meshDataTetraElement, m_numIteration);
+	m_resistivityBlock.outputResisitivityBlock(m_ptrMeshData, m_numIteration);
+	const bool isTetra = ( meshType.substr(0,5).compare("TETRA") == 0 ) ? true : false;
+	m_resistivityBlock.outputResistivityValuesToBinary(isTetra, m_ptrMeshData, m_numIteration);
 }
 
 void readParameterFile( const std::string& paramFile ){
@@ -166,13 +185,13 @@ void readParameterFile( const std::string& paramFile ){
 
 }
 
-void selectElements( const MeshDataTetraElement& MeshData, std::set<int>& elementsSelected ){
+void selectElements( const MeshData* const MeshData, std::set<int>& elementsSelected ){
 
-	const int numElemTotal = MeshData.getNumElemTotal();
+	const int numElemTotal = MeshData->getNumElemTotal();
 	for( int iElem = 0; iElem < numElemTotal; ++iElem ){
 		const int iBlk = m_resistivityBlock.getBlockFromElement(iElem);
 		if( !m_resistivityBlock.isFixedResistivityValue(iBlk) ){
-			const CommonParameters::locationXYZ coord = MeshData.getElementCenter(iElem);
+			const CommonParameters::locationXYZ coord = MeshData->getElementCenter(iElem);
 			const double resistivity = m_resistivityBlock.getResistivityValueFromBlockIndex(iBlk);
 			if( inRegion(coord) && resistivity >= m_minResistivityForSelecting && resistivity <= m_maxResistivityForSelecting ){
 				elementsSelected.insert(iElem);
