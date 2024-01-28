@@ -145,10 +145,10 @@ void ResistivityBlock::inputResisitivityBlock(const int iterNum){
 		m_resistivityBlockInfo.push_back(info);
 	}
 
-	if( !isFixedResistivityValue(0) ){
-		std::cerr << "Error : Resistivity block 0 must be the air. And, its resistivity must be fixed." << std::endl;
-		exit(1);
-	}
+	//if( !isFixedResistivityValue(0) ){
+	//	std::cerr << "Error : Resistivity block 0 must be the air. And, its resistivity must be fixed." << std::endl;
+	//	exit(1);
+	//}
 	inFile.close();
 
 	m_blockToElements.reserve(nBlk);
