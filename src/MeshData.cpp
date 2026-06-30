@@ -35,8 +35,8 @@
 
 // Constructer
 MeshData::MeshData():
-	m_numElemTotal(NULL),
-	m_numNodeTotal(NULL),
+	m_numElemTotal(0),
+	m_numNodeTotal(0),
 	m_numNodeOneElement(8),
 	m_numEdgeOneElement(12),
 	m_numNodeOnFaceOneElement(4),
@@ -49,7 +49,7 @@ MeshData::MeshData():
 {
 
 	for ( int i = 0; i < 6; ++i ){
-		m_numElemOnBoundaryPlanes[i] = NULL;
+		m_numElemOnBoundaryPlanes[i] = 0;
 	}
 	
 	for ( int i = 0; i < 6; ++i ){

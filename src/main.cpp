@@ -38,7 +38,8 @@
 #include "MeshData.h"
 #include "MeshDataTetraElement.h"
 #include "MeshDataNonConformingHexaElement.h"
-#include "ResistivityBlock.h"
+#include "ResistivityBlockIsotropic.h"
+#include "ResistivityBlockAnisotropic.h"
 
 enum RegionType{
 	ELLIPSOID = 0,
@@ -56,18 +57,14 @@ CommonParameters::locationXYZ m_center = { 0.0, 0.0, 0.0 };
 double m_angle;
 int m_numIteration = 0;
 int m_regionType = ELLIPSOID;
-double m_minResistivityForSelecting = 0.1;
-double m_maxResistivityForSelecting = 1.0e4;
-double m_modifiedResistivity = -1.0;
-double m_modifiedMinResistivity = 0.1;
-double m_modifiedMaxResistivity = 1.0e4;
 Length m_length = { 0.0, 0.0, 0.0 };
-ResistivityBlock m_resistivityBlock;
+ResistivityBlock* m_ptrResistivityBlock = NULL;
+ResistivityBlockIsotropic::CriteriaAndModifiedIsotropicResistivity m_criteriaAndModifiedIsotropicResistivity = { 0.1 , 1.0e4 ,  -1.0 , 0.1 ,1.0e4 };
+ResistivityBlockAnisotropic::CriteriaAndModifiedAnisotropicResistivity m_criteriaAndModifiedAnisotropicResistivity;
 
-void run( const std::string& paramFile );
-void readParameterFile( const std::string& paramFile );
+void run( const std::string& paramFile, const bool isAnisotropicInversionUsed);
+void readParameterFile(const bool isAnisotropicInversionUsed, const std::string& paramFile );
 void selectElements( const MeshData* const MeshData, std::set<int>& elementsSelected );
-void selectResistivityBlocks();
 bool inRegion( const CommonParameters::locationXYZ& coord );
 
 int main( int argc, char* argv[] ){
@@ -75,12 +72,18 @@ int main( int argc, char* argv[] ){
 		std::cerr << "You must specify parameter file  !!" << std::endl;
 		exit(1);
 	}
-	run( argv[1] );
+	bool isAnisotropicInversionUsed(false);
+	for (int i = 2; i < argc; ++i) {
+		if (strcmp(argv[i], "-aniso") == 0) {
+			isAnisotropicInversionUsed = true;
+		}
+	}
+	run( argv[1], isAnisotropicInversionUsed );
 	return 0;
 }
 
-void run( const std::string& paramFile ){
-	readParameterFile(paramFile);
+void run( const std::string& paramFile, const bool isAnisotropicInversionUsed ){
+	readParameterFile(isAnisotropicInversionUsed, paramFile);
 	std::ifstream inFile( "mesh.dat", std::ios::in );
 	if( inFile.fail() )
 	{
@@ -99,16 +102,24 @@ void run( const std::string& paramFile ){
 		std::cerr << "Unsupported mesh type: " << meshType << std::endl;
 	}
 	m_ptrMeshData->inputMeshData();
-	m_resistivityBlock.inputResisitivityBlock(m_numIteration);
 	std::set<int> elementsSelected ;
 	selectElements(m_ptrMeshData, elementsSelected);
-	m_resistivityBlock.changeResistivityOfSelectedElements(elementsSelected, m_modifiedResistivity, m_modifiedMinResistivity, m_modifiedMaxResistivity );
-	m_resistivityBlock.outputResisitivityBlock(m_ptrMeshData, m_numIteration);
+	if (isAnisotropicInversionUsed) {
+		m_ptrResistivityBlock = new ResistivityBlockAnisotropic;
+		m_ptrResistivityBlock->inputResistivityBlock(m_numIteration);
+		dynamic_cast<ResistivityBlockAnisotropic*>(m_ptrResistivityBlock)->changeResistivityOfSelectedElements(elementsSelected, m_criteriaAndModifiedAnisotropicResistivity);
+	}
+	else {
+		m_ptrResistivityBlock = new ResistivityBlockIsotropic;
+		m_ptrResistivityBlock->inputResistivityBlock(m_numIteration);
+		dynamic_cast<ResistivityBlockIsotropic*>(m_ptrResistivityBlock)->changeResistivityOfSelectedElements(elementsSelected, m_criteriaAndModifiedIsotropicResistivity);
+	}
+	m_ptrResistivityBlock->outputResistivityBlock(m_ptrMeshData, m_numIteration);
 	const bool isTetra = ( meshType.substr(0,5).compare("TETRA") == 0 ) ? true : false;
-	m_resistivityBlock.outputResistivityValuesToBinary(isTetra, m_ptrMeshData, m_numIteration);
+	m_ptrResistivityBlock->outputResistivityValuesToBinary(isTetra, m_ptrMeshData, m_numIteration);
 }
 
-void readParameterFile( const std::string& paramFile ){
+void readParameterFile( const bool isAnisotropicInversionUsed, const std::string& paramFile ){
 
 	std::ifstream ifs( paramFile.c_str(), std::ios::in );
 	if( ifs.fail() ){
@@ -169,17 +180,80 @@ void readParameterFile( const std::string& paramFile ){
 	m_center.Z *= 1000.0;
 	m_angle *= CommonParameters::deg2rad;
 
-	ifs >> m_minResistivityForSelecting;
-	std::cout << "Minimum resistivity for selecting parameter cells [Ohm-m] :  " << m_minResistivityForSelecting << std::endl;
-	ifs >> m_maxResistivityForSelecting;
-	std::cout << "Maximum resistivity for selecting parameter cells [Ohm-m] :  " << m_maxResistivityForSelecting << std::endl;
-
-	ifs >> m_modifiedResistivity;
-	std::cout << "Modified resistivity [Ohm-m] :  " << m_modifiedResistivity << std::endl;
-	ifs >> m_modifiedMinResistivity;
-	std::cout << "Modified minimum resistivity [Ohm-m] :  " << m_modifiedMinResistivity << std::endl;
-	ifs >> m_modifiedMaxResistivity;
-	std::cout << "Modified maximum resistivity [Ohm-m] :  " << m_modifiedMaxResistivity << std::endl;
+	if (isAnisotropicInversionUsed) {
+		// Rho_XX
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.minRhoXXForSelecting;
+		std::cout << "Minimum rhoXX [Ohm-m] for selecting the parameter cells to be modified: " 
+			<< m_criteriaAndModifiedAnisotropicResistivity.minRhoXXForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.maxRhoXXForSelecting;
+		std::cout << "Maximum rhoXX [Ohm-m] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.maxRhoXXForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.modRhoXX;
+		std::cout << "Modified rhoXX [Ohm-m]: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.modRhoXX << std::endl;
+		// Rho_YY
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.minRhoYYForSelecting;
+		std::cout << "Minimum rhoYY [Ohm-m] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.minRhoYYForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.maxRhoYYForSelecting;
+		std::cout << "Maximum rhoYY [Ohm-m] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.maxRhoYYForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.modRhoYY;
+		std::cout << "Modified rhoYY [Ohm-m]: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.modRhoYY << std::endl;
+		// Rho_ZZ
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.minRhoZZForSelecting;
+		std::cout << "Minimum rhoZZ [Ohm-m] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.minRhoZZForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.maxRhoZZForSelecting;
+		std::cout << "Maximum rhoYY [Ohm-m] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.maxRhoZZForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.modRhoZZ;
+		std::cout << "Modified rhoZZ [Ohm-m]: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.modRhoZZ << std::endl;
+		// Strike
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.minStrikeForSelecting;
+		std::cout << "Minimum strike [deg.] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.minStrikeForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.maxStrikeForSelecting;
+		std::cout << "Maximum strike [deg.] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.maxStrikeForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.modStrike;
+		std::cout << "Modified strike [deg.]: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.modStrike << std::endl;
+		// Dip
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.minDipForSelecting;
+		std::cout << "Minimum dip [deg.] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.minDipForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.maxDipForSelecting;
+		std::cout << "Maximum dip [deg.] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.maxDipForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.modDip;
+		std::cout << "Modified dip [deg.]: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.modDip << std::endl;
+		// Slant
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.minSlantForSelecting;
+		std::cout << "Minimum slant [deg.] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.minSlantForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.maxSlantForSelecting;
+		std::cout << "Maximum slant [deg.] for selecting the parameter cells to be modified: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.maxSlantForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedAnisotropicResistivity.modSlant;
+		std::cout << "Modified slant [deg.]: "
+			<< m_criteriaAndModifiedAnisotropicResistivity.modSlant << std::endl;
+	}
+	else { 
+		ifs >> m_criteriaAndModifiedIsotropicResistivity.minResistivityForSelecting;
+		std::cout << "Minimum resistivity for selecting parameter cells [Ohm-m] :  " << m_criteriaAndModifiedIsotropicResistivity.minResistivityForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedIsotropicResistivity.maxResistivityForSelecting;
+		std::cout << "Maximum resistivity for selecting parameter cells [Ohm-m] :  " << m_criteriaAndModifiedIsotropicResistivity.maxResistivityForSelecting << std::endl;
+		ifs >> m_criteriaAndModifiedIsotropicResistivity.modResistivity;
+		std::cout << "Modified resistivity [Ohm-m] :  " << m_criteriaAndModifiedIsotropicResistivity.modResistivity << std::endl;
+		ifs >> m_criteriaAndModifiedIsotropicResistivity.modMinResistivity;
+		std::cout << "Modified minimum resistivity [Ohm-m] :  " << m_criteriaAndModifiedIsotropicResistivity.modMinResistivity << std::endl;
+		ifs >> m_criteriaAndModifiedIsotropicResistivity.modMaxResistivity;
+		std::cout << "Modified maximum resistivity [Ohm-m] :  " << m_criteriaAndModifiedIsotropicResistivity.modMaxResistivity << std::endl;
+	}
 
 	ifs.close();
 
@@ -189,17 +263,12 @@ void selectElements( const MeshData* const MeshData, std::set<int>& elementsSele
 
 	const int numElemTotal = MeshData->getNumElemTotal();
 	for( int iElem = 0; iElem < numElemTotal; ++iElem ){
-		const int iBlk = m_resistivityBlock.getBlockFromElement(iElem);
-		if( !m_resistivityBlock.isFixedResistivityValue(iBlk) ){
-			const CommonParameters::locationXYZ coord = MeshData->getElementCenter(iElem);
-			const double resistivity = m_resistivityBlock.getResistivityValueFromBlockIndex(iBlk);
-			if( inRegion(coord) && resistivity >= m_minResistivityForSelecting && resistivity <= m_maxResistivityForSelecting ){
-				elementsSelected.insert(iElem);
-			}
+		const CommonParameters::locationXYZ coord = MeshData->getElementCenter(iElem);
+		if( inRegion(coord) ){
+			elementsSelected.insert(iElem);
 		}
 	}
-
-	std::cout << "Number of the selected elements : " << elementsSelected.size() << std::endl;
+	std::cout << "Number of the elements in the target area: " << elementsSelected.size() << std::endl;
 
 }
 

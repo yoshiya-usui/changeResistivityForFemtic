@@ -1023,7 +1023,7 @@ double MeshDataTetraElement::calcVolume( const int elemID ) const{
 void MeshDataTetraElement::calcVolumeCoordsOfPoint( const int elemID, const CommonParameters::locationXYZ& pointCoord, CommonParameters::VolumeCoords& coords ) const{
 
 	//if( elemID >= m_numElemTotal || elemID < 0 ){
-	//	OutputFiles::m_logFile << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
+	//	std::cerr << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
 	//	exit(1);
 	//}
 	assert( elemID >= 0 );
@@ -1055,12 +1055,12 @@ void MeshDataTetraElement::calcVolumeCoordsOfPoint( const int elemID, const Comm
 void MeshDataTetraElement::calcAreaCoordsOfPointOnLandSurface( const int elemID, const int faceID, const CommonParameters::locationXY& pointCoord, CommonParameters::AreaCoords& coords ) const{
 
 	//if( elemID >= m_numElemTotal || elemID < 0 ){
-	//	OutputFiles::m_logFile << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
+	//	std::cerr << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
 	//	exit(1);
 	//}
 
 	//if( faceID < 0 || faceID >= 4 ){
-	//	OutputFiles::m_logFile << "Error : ID of face is out of range !! : faceID = " << faceID << std::endl;
+	//	std::cerr << "Error : ID of face is out of range !! : faceID = " << faceID << std::endl;
 	//	exit(1);
 	//}
 	assert( elemID >= 0 );
@@ -1162,7 +1162,7 @@ void MeshDataTetraElement::calcAreaCoordsOfPointOnZXPlaneOfBoundary( const int i
 //CommonParameters::Vector3D MeshDataTetraElement::calulateNormalVectorOfElementFace( const int elemID, const int faceID ) const{
 //
 //	if( elemID >= m_numElemTotal || elemID < 0 ){
-//		OutputFiles::m_logFile << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
+//		std::cerr << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
 //		exit(1);
 //	}
 //
@@ -1186,7 +1186,7 @@ void MeshDataTetraElement::calcAreaCoordsOfPointOnZXPlaneOfBoundary( const int i
 bool MeshDataTetraElement::locateInsideOfFace( const int elemID, const int faceID, const CommonParameters::locationXYZ& loc ) const{
 
 	//if( elemID >= m_numElemTotal || elemID < 0 ){
-	//	OutputFiles::m_logFile << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
+	//	std::cerr << "Error : ID of element is out of range !! : elemID = " << elemID << std::endl;
 	//	exit(1);
 	//}
 	assert( elemID >= 0 );

@@ -1,5 +1,5 @@
-//--------------------------------------------------------------------------
-// MIT License
+//-------------------------------------------------------------------------------------------------------
+// The MIT License (MIT)
 //
 // Copyright (c) 2021 Yoshiya Usui
 //
@@ -20,77 +20,56 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-//--------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 #ifndef DBLDEF_RESISTIVITY_BLOCK
 #define DBLDEF_RESISTIVITY_BLOCK
 
-#include <iostream>
-#include <set>
-#include <vector>
 #include <map>
-#include <stdlib.h>
-#include "MeshDataTetraElement.h"
+#include <vector>
+#include <set>
+#include <iostream>
+#include <cstdlib>
+#include "MeshData.h"
 
 // Class of resistivity blocks
 class ResistivityBlock{
 
 public:
 
-	enum ResistivityBlockTypes{
-		FREE_AND_CONSTRAINED = 0,
-		FIXED_AND_ISOLATED,
-		FIXED_AND_CONSTRAINED,
-		FREE_AND_ISOLATED,
-	};
-
-	struct ResistivityBlockInformation{
-		// Array of resistivity values of each block
-		double resistivityValue;
-		// Array of minimum resistivity values of each block
-		double resistivityValueMin;
-		// Array of maximum resistivity values of each block
-		double resistivityValueMax;
-		// Positive constant parameter n
-		double weightingConstant;
-		// Type of resistivity block
-		int type;
-	};
-
 	// Constructer
 	ResistivityBlock();
 
 	// Destructer
-	~ResistivityBlock();
-
-	// Change resistivity of the selected elements
-	void changeResistivityOfSelectedElements( const std::set<int>& elementsSelected, const double resistivityMod ,
-		const double resistivityModMin, const double resistivityMax );
-
-	// Read data of resisitivity block model from input file
-	void inputResisitivityBlock(const int iterNum);
-
-	// Get resisitivity block index from element index
-	int getBlockFromElement( const int iElem ) const;
-
-	// Get resistivity value from resisitivity block index
-	double getResistivityValueFromBlockIndex( const int iBlk ) const;
-
-	// Get total number of resistivity blocks
-	int getNumResistivityBlockTotal() const;
-
-	// Get flag specifing whether resistivity value of resistivity block is fixed or not
-	bool isFixedResistivityValue( const int iBlk ) const;
-
-	// Get element indexes from resistivity block index
-	const std::set<int> getElementsFromBlock( const int iBlk ) const;
-
-	// Output data of resisitivity block model to file
-	void outputResisitivityBlock( const MeshData* const MeshData, const int iterNum ) const;
+	virtual ~ResistivityBlock();
 
 	// Output resistivity values to binary file
-	void outputResistivityValuesToBinary( const bool isTetra, const MeshData* const MeshData, const int iterNum ) const;
+	virtual void outputResistivityValuesToBinary(const bool isTetra, const MeshData* const MeshData, const int iterNum) const = 0;
+
+	// Read data of resisitivity block model from input file
+	void inputResistivityBlock(const int iterNum);
+
+	// Get resisitivity block index from element index
+	int getBlockFromElement(const int iElem) const;
+
+	// Get element indexes from resistivity block index
+	const std::set<int> getElementsFromBlock(const int iBlk) const;
+
+	// Get total number of resistivity blocks
+	virtual int getNumResistivityBlockTotal() const = 0;
+
+	// Output data of resisitivity block model to file
+	void outputResistivityBlock(const MeshData* const MeshData, const int iterNum) const;
+
+protected:
+
+	// Array mapping element indexess to resistivity block indexes
+	std::map<int, int> m_elementToBlocks;
+
+	// Array mapping resistivity block indexes to element indexes
+	std::vector< std::set<int> > m_blockToElements;
 
 private:
+
 	// Copy constructer
 	ResistivityBlock(const ResistivityBlock& rhs){
 		std::cerr << "Error : Copy constructer of the class ResistivityBlock is not implemented." << std::endl;
@@ -103,14 +82,12 @@ private:
 		exit(1);
 	};
 
-	// Array mapping element indexess to resistivity block indexes
-	std::map<int, int> m_elementToBlocks;
+	// Read reslstivity values from input file
+	virtual void inputResistivityValues( const int nElem, const int nBlk, std::ifstream& inFile ) = 0;
 
-	// Array mapping resistivity block indexes to element indexes
-	std::vector< std::set<int> > m_blockToElements;
+	// Output resistivity values to resistivity_block_iter*.dat
+	virtual void outputResistivityValues(const int iterNum, FILE* fp) const = 0;
 
-	// Arrays of resistivity block information
-	std::vector<ResistivityBlockInformation> m_resistivityBlockInfo;
 
 };
 

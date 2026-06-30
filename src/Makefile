@@ -1,9 +1,7 @@
 CXX           = icpc
 CC            = icpc
 CXXFLAGS      = -O3 \
-                -qopenmp \
                 -D_LINUX \
-                -D_USE_OMP \
                 -DNDEBUG 
 DEST          = ./
 OBJS          = main.o \
@@ -11,6 +9,8 @@ OBJS          = main.o \
                 MeshDataTetraElement.o \
                 MeshDataNonConformingHexaElement.o \
                 ResistivityBlock.o \
+                ResistivityBlockIsotropic.o \
+                ResistivityBlockAnisotropic.o \
                 Util.o
 PROGRAM       = changeResistivity
 
